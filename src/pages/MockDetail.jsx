@@ -6,6 +6,31 @@ import Layout from '../components/Layout';
 import { CheckCircle2, XCircle, HelpCircle, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 
+// Math & Markdown Imports
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css'; // Crucial for math styling
+
+// Helper Component for rendering Math/Markdown
+const MathText = ({ content, className, isInline = false }) => {
+  return (
+    <ReactMarkdown
+      className={clsx("markdown-content", className)}
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={{
+        // If inline (like in options), render span instead of p to avoid invalid HTML
+        p: ({ children }) => isInline ? <span className="inline">{children}</span> : <p className="mb-2 last:mb-0">{children}</p>,
+        // Ensure links open in new tabs if any appear
+        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" />
+      }}
+    >
+      {content || ""}
+    </ReactMarkdown>
+  );
+};
+
 export default function MockDetail() {
   const { id } = useParams();
   const [mock, setMock] = useState(null);
@@ -22,7 +47,6 @@ export default function MockDetail() {
 
   useEffect(() => {
     db.mocks.get(Number(id)).then(data => {
-        // Migration helper: ensure images is an array
         if (data && !data.images && data.image) {
             data.images = [data.image];
         }
@@ -121,10 +145,12 @@ export default function MockDetail() {
                  </span>
             </div>
 
-            <h1 className="text-xl font-bold text-gray-800 mb-6 leading-relaxed whitespace-pre-wrap">
-                {mock.question}
-            </h1>
+            {/* Question - Using MathText */}
+            <div className="text-xl font-bold text-gray-800 mb-6 leading-relaxed">
+                <MathText content={mock.question} />
+            </div>
             
+            {/* Options */}
             <div className="space-y-3">
               {mock.options.map((opt, idx) => {
                 let statusClass = "bg-gray-50 border-transparent hover:bg-gray-100 text-gray-700";
@@ -148,9 +174,12 @@ export default function MockDetail() {
                       statusClass
                     )}
                   >
-                    <span className="font-medium">{opt}</span>
-                    {idx === mock.correctIndex && (showAnswer || selectedIdx !== null) && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                    {idx === selectedIdx && idx !== mock.correctIndex && <XCircle className="w-5 h-5 text-red-600" />}
+                    <span className="font-medium flex-1 pr-4">
+                        {/* Inline Math for options */}
+                        <MathText content={opt} isInline={true} />
+                    </span>
+                    {idx === mock.correctIndex && (showAnswer || selectedIdx !== null) && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+                    {idx === selectedIdx && idx !== mock.correctIndex && <XCircle className="w-5 h-5 text-red-600 shrink-0" />}
                   </button>
                 );
               })}
@@ -167,14 +196,16 @@ export default function MockDetail() {
                </button>
             </div>
 
-            {/* Explanation */}
+            {/* Explanation - Using MathText */}
             {(showAnswer || selectedIdx !== null) && (
                 <div className="mt-4 bg-yellow-50 p-5 rounded-lg text-yellow-900 text-sm leading-relaxed border border-yellow-200/60 animate-fade-in">
                     <span className="font-bold flex items-center gap-2 mb-2 text-yellow-700 uppercase tracking-wide text-xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
                         Explanation
                     </span>
-                    <p className="whitespace-pre-wrap text-gray-800">{mock.explanation}</p>
+                    <div className="text-gray-800">
+                        <MathText content={mock.explanation} />
+                    </div>
                 </div>
             )}
           </div>
@@ -193,7 +224,8 @@ export default function MockDetail() {
                         "p-3 rounded-lg text-sm max-w-[85%]",
                         msg.role === 'user' ? "bg-things-blue text-white ml-auto rounded-tr-none" : "bg-gray-100 text-gray-800 rounded-tl-none"
                     )}>
-                        {msg.parts[0].text}
+                        {/* Math support in chat too */}
+                        <MathText content={msg.parts[0].text} isInline={false} />
                     </div>
                 ))}
                 {isChatting && <div className="text-xs text-gray-400 ml-2 animate-pulse">Gemini is thinking...</div>}
