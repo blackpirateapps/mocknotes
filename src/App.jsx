@@ -13,7 +13,7 @@ export default function App() {
         <Route path="/add" element={<Importer />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/mock/:id" element={<MockDetail />} />
-        <Route path="/take-quiz" element={<TakeQuiz />}
+        <Route path="/take-quiz" element={<TakeQuiz />} />
       </Routes>
     </BrowserRouter>
   );
