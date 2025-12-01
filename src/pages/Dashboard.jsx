@@ -6,6 +6,31 @@ import Layout from '../components/Layout';
 import { ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
+// Math & Markdown Imports
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
+// Lightweight component for rendering math in previews
+// We map paragraphs to spans to ensure they fit inside the h3/line-clamp structure
+const MathPreview = ({ content }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={{
+        p: ({ children }) => <span className="inline">{children}</span>,
+        // Block equations ($$) usually render as div/p, we force them to flow inline-ish for preview
+        div: ({ children }) => <span className="inline">{children}</span>,
+        span: ({ children }) => <span className="inline">{children}</span>
+      }}
+    >
+      {content || ""}
+    </ReactMarkdown>
+  );
+};
+
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const subjectFilter = searchParams.get('subject');
@@ -87,6 +112,7 @@ export default function Dashboard() {
                 {/* Content */}
                 <div className="flex-1 min-w-0 pr-0.5">
                   <div className="flex justify-between items-start gap-2">
+                    {/* Render Math Preview instead of raw text */}
                     <h3 className={clsx(
                         "font-medium text-[15px] leading-snug w-full",
                         // Mobile: Allow 2 lines. Desktop: Truncate 1 line
@@ -94,9 +120,10 @@ export default function Dashboard() {
                         isProcessing ? "text-gray-500 italic" : "text-gray-900",
                         isError ? "text-red-500" : ""
                     )}>
-                      {mock.question}
+                      {isProcessing ? mock.question : <MathPreview content={mock.question} />}
                     </h3>
-                    {/* Date visible on mobile too now, just small */}
+                    
+                    {/* Date */}
                     <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap pt-0.5">
                         {dateStr}
                     </span>
@@ -115,7 +142,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Right Arrow (Desktop only to save space on mobile) */}
+                {/* Right Arrow (Desktop only) */}
                 <div className="shrink-0 hidden md:flex items-center">
                   {!isProcessing && (
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
