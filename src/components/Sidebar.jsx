@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { 
   Inbox, Book, Calculator, BrainCircuit, Globe, 
-  Settings, PlusCircle, Plus 
+  Settings, PlusCircle, Plus, Timer
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -96,12 +96,21 @@ export default function Sidebar({ onCloseMobile }) {
       {/* Main Nav - Scrollable Area */}
       <nav className="flex-1 px-3 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 py-2">
         <div>
+          <div className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            Menu
+          </div>
           <NavItem 
             to="/" 
             icon={Inbox} 
             label="All Questions" 
             count={questions.length}
             isActive={!currentSubject && location.pathname === '/'} 
+          />
+          <NavItem 
+            to="/take-quiz" 
+            icon={Timer} 
+            label="Take Quiz" 
+            isActive={location.pathname === '/take-quiz'} 
           />
           <NavItem 
             to="/add" 
