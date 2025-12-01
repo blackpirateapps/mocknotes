@@ -2,31 +2,57 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('MockMasterDB');
 
-// Updated schema to include subject and topic for indexing
-db.version(2).stores({
-  mocks: '++id, createdAt, subject, topic'
+// Version 3: Add 'status' field for background processing
+db.version(3).stores({
+  mocks: '++id, createdAt, subject, topic, status'
 }).upgrade(tx => {
-    // Migration script if needed for existing data
     return tx.table("mocks").toCollection().modify(mock => {
-        mock.subject = mock.subject || "Uncategorized";
-        mock.topic = mock.topic || "General";
-        if (typeof mock.image === 'string') {
-            mock.images = [mock.image];
-            delete mock.image;
-        }
+        // Default existing mocks to 'done'
+        mock.status = mock.status || 'done';
     });
 });
 
-export async function addMock(imagesData, aiData) {
+/**
+ * Adds a placeholder mock immediately and returns its ID.
+ * The queue processor will update this entry later.
+ */
+export async function addPlaceholderMock(imagesData) {
   return await db.mocks.add({
-    images: imagesData, // Array of Base64 strings
+    images: imagesData,
+    question: "Analyzing...", // Placeholder text
+    options: [],
+    correctIndex: -1,
+    explanation: "",
+    subject: "Processing",
+    topic: "Pending",
+    status: "processing",
+    createdAt: new Date(),
+    userNotes: []
+  });
+}
+
+/**
+ * Updates a mock with the AI results
+ */
+export async function updateMockWithAI(id, aiData) {
+  return await db.mocks.update(id, {
     question: aiData.question,
     options: aiData.options,
     correctIndex: aiData.correctIndex,
     explanation: aiData.explanation,
-    subject: aiData.subject || "GS", // Default fallback
+    subject: aiData.subject || "Uncategorized",
     topic: aiData.topic || "General",
-    createdAt: new Date(),
-    userNotes: []
+    status: 'done'
+  });
+}
+
+/**
+ * Marks a mock as failed
+ */
+export async function failMock(id, errorMsg) {
+  return await db.mocks.update(id, {
+    question: "Failed to Analyze",
+    explanation: `Error: ${errorMsg}. Please try deleting and re-uploading.`,
+    status: 'error'
   });
 }
