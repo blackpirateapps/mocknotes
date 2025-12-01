@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
 import { askGeminiFollowUp } from '../lib/gemini';
 import Layout from '../components/Layout';
-import { CheckCircle2, XCircle, HelpCircle, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  CheckCircle2, XCircle, HelpCircle, Send, 
+  ChevronLeft, ChevronRight, Trash2 
+} from 'lucide-react';
 import clsx from 'clsx';
 
 // Math & Markdown Imports
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css'; // Crucial for math styling
+import 'katex/dist/katex.min.css';
 
 // Helper Component for rendering Math/Markdown
 const MathText = ({ content, className, isInline = false }) => {
@@ -20,9 +23,7 @@ const MathText = ({ content, className, isInline = false }) => {
       remarkPlugins={[remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
-        // If inline (like in options), render span instead of p to avoid invalid HTML
         p: ({ children }) => isInline ? <span className="inline">{children}</span> : <p className="mb-2 last:mb-0">{children}</p>,
-        // Ensure links open in new tabs if any appear
         a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" />
       }}
     >
@@ -33,6 +34,7 @@ const MathText = ({ content, className, isInline = false }) => {
 
 export default function MockDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [mock, setMock] = useState(null);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -59,6 +61,18 @@ export default function MockDetail() {
   const handleOptionClick = (idx) => {
     if (selectedIdx !== null || showAnswer) return; 
     setSelectedIdx(idx);
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this question? This action cannot be undone.")) {
+      try {
+        await db.mocks.delete(Number(id));
+        navigate('/');
+      } catch (error) {
+        console.error("Failed to delete mock:", error);
+        alert("Failed to delete. Please try again.");
+      }
+    }
   };
 
   const handleAskGemini = async (e) => {
@@ -135,17 +149,27 @@ export default function MockDetail() {
         {/* Right Column: Content */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-things p-6 border border-things-border">
-            {/* Categorization Tags */}
-            <div className="flex gap-2 mb-4">
-                 <span className="px-2 py-1 rounded-md bg-things-blue/10 text-things-blue text-xs font-semibold uppercase tracking-wide">
-                     {mock.subject}
-                 </span>
-                 <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium">
-                     {mock.topic}
-                 </span>
+            {/* Header: Tags & Delete Button */}
+            <div className="flex items-center justify-between mb-4">
+                 <div className="flex gap-2">
+                    <span className="px-2 py-1 rounded-md bg-things-blue/10 text-things-blue text-xs font-semibold uppercase tracking-wide">
+                        {mock.subject}
+                    </span>
+                    <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium">
+                        {mock.topic}
+                    </span>
+                 </div>
+
+                 <button 
+                    onClick={handleDelete}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                    title="Delete Question"
+                 >
+                    <Trash2 className="w-4 h-4" />
+                 </button>
             </div>
 
-            {/* Question - Using MathText */}
+            {/* Question */}
             <div className="text-xl font-bold text-gray-800 mb-6 leading-relaxed">
                 <MathText content={mock.question} />
             </div>
@@ -175,7 +199,6 @@ export default function MockDetail() {
                     )}
                   >
                     <span className="font-medium flex-1 pr-4">
-                        {/* Inline Math for options */}
                         <MathText content={opt} isInline={true} />
                     </span>
                     {idx === mock.correctIndex && (showAnswer || selectedIdx !== null) && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
@@ -196,7 +219,7 @@ export default function MockDetail() {
                </button>
             </div>
 
-            {/* Explanation - Using MathText */}
+            {/* Explanation */}
             {(showAnswer || selectedIdx !== null) && (
                 <div className="mt-4 bg-yellow-50 p-5 rounded-lg text-yellow-900 text-sm leading-relaxed border border-yellow-200/60 animate-fade-in">
                     <span className="font-bold flex items-center gap-2 mb-2 text-yellow-700 uppercase tracking-wide text-xs">
@@ -224,7 +247,6 @@ export default function MockDetail() {
                         "p-3 rounded-lg text-sm max-w-[85%]",
                         msg.role === 'user' ? "bg-things-blue text-white ml-auto rounded-tr-none" : "bg-gray-100 text-gray-800 rounded-tl-none"
                     )}>
-                        {/* Math support in chat too */}
                         <MathText content={msg.parts[0].text} isInline={false} />
                     </div>
                 ))}
