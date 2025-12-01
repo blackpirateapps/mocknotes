@@ -1,15 +1,16 @@
 import React from 'react';
-import { NavLink, useSearchParams } from 'react-router-dom';
+import { NavLink, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { 
   Inbox, Book, Calculator, BrainCircuit, Globe, 
-  Settings, PlusCircle 
+  Settings, PlusCircle, Plus 
 } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function Sidebar() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const currentSubject = searchParams.get('subject');
 
   // Fetch unique topics per subject for the submenu
@@ -76,17 +77,24 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-gray-50/50 border-r border-things-border flex flex-col h-screen fixed left-0 top-0 overflow-y-auto">
+    <aside className="w-64 bg-gray-50/50 border-r border-things-border flex flex-col h-screen fixed left-0 top-0">
       {/* Header */}
-      <div className="p-4 pt-6">
+      <div className="p-4 pt-6 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
           <Book className="w-5 h-5 text-things-blue" />
           MockMaster
         </h1>
+        <Link 
+          to="/add" 
+          className="p-1 rounded-md text-gray-400 hover:text-things-blue hover:bg-white hover:shadow-sm transition"
+          title="Create New Mock"
+        >
+          <Plus className="w-5 h-5" />
+        </Link>
       </div>
 
-      {/* Main Nav */}
-      <nav className="flex-1 px-3 space-y-6">
+      {/* Main Nav - Scrollable Area */}
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
         {/* Core */}
         <div>
           <NavItem 
@@ -94,13 +102,13 @@ export default function Sidebar() {
             icon={Inbox} 
             label="All Questions" 
             count={questions.length}
-            isActive={!currentSubject && window.location.pathname === '/'} 
+            isActive={!currentSubject && location.pathname === '/'} 
           />
           <NavItem 
             to="/add" 
             icon={PlusCircle} 
             label="Add New" 
-            isActive={window.location.pathname === '/add'} 
+            isActive={location.pathname === '/add'} 
           />
         </div>
 
@@ -116,13 +124,13 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-gray-200">
+      {/* Footer - Pinned to bottom */}
+      <div className="p-3 border-t border-gray-200 bg-gray-50/50">
         <NavItem 
           to="/settings" 
           icon={Settings} 
           label="Settings" 
-          isActive={window.location.pathname === '/settings'} 
+          isActive={location.pathname === '/settings'} 
         />
       </div>
     </aside>
