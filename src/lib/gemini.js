@@ -38,27 +38,29 @@ export async function analyzeImage(base64Images) {
   const model = genAI.getGenerativeModel({ model: modelName });
 
   const prompt = `
-    Analyze the provided image(s) of a mock exam question. Treat them as a single context.
+    Analyze the provided image(s) of a mock exam question. 
 
     TASKS:
-    1. Extract the Question text, Options, and Explanation from the images. In case of math extract the exactly accurate math question. 
-    2. Identify the Correct Answer.
-    3. Classify the question into one of these 4 Subjects: "English", "Maths", "Reasoning", "GS".
-    4. Identify the specific Topic (e.g., Algebra, Puzzles, Grammar, Polity).
+    1. Extract the Question text, Options, and Explanation. In case of math extract EXACTLY accurate math question. 
+    2. **FORMATTING:** You MUST preserve the visual structure of the question.
+       - If the question contains statements (e.g., "Statement I:", "Statement II:"), put them on separate lines.
+       - If there are lists or bullet points in the image, use Markdown lists.
+       - If there are bold headers in the image, use Markdown bold (**text**).
+       - Use double newlines (\\n\\n) to create visible paragraph breaks between distinct parts of the question.
+    3. Identify the Correct Answer, Subject, and Topic.
 
     CRITICAL MATH FORMATTING RULES:
-    - You MUST use LaTeX for all mathematical expressions, equations, and symbols.
-    - Enclose INLINE math in single dollar signs (e.g., $x^2 + y^2 = z^2$).
-    - Enclose BLOCK math (standalone equations) in double dollar signs (e.g., $$ \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$).
-    - Do not use plain text for math (e.g., do NOT write "x squared").
-    - IMPORTANT: Since you are outputting JSON, you must double-escape all backslashes in LaTeX commands (e.g., use "\\\\frac" instead of "\\frac").
+    - You MUST use LaTeX for all mathematical expressions.
+    - Enclose INLINE math in single dollar signs (e.g., $x^2$).
+    - Enclose BLOCK math in double dollar signs (e.g., $$ \\frac{a}{b} $$).
+    - Output raw JSON. Double-escape backslashes for LaTeX (e.g., "\\\\frac").
 
-    Return ONLY raw JSON with this structure:
+    Return ONLY raw JSON:
     {
-      "question": "Question text with LaTeX math...",
-      "options": ["Option A with LaTeX...", "Option B..."],
+      "question": "The question text with **Markdown** formatting and $LaTeX$ math...",
+      "options": ["Option A...", "Option B..."],
       "correctIndex": 0,
-      "explanation": "Explanation with LaTeX math...",
+      "explanation": "Explanation with **Markdown** structure and math...",
       "subject": "Maths", 
       "topic": "Algebra"
     }
