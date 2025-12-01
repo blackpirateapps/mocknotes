@@ -11,7 +11,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import clsx from 'clsx';
-import Button from './Button';
+import Button from '../components/Button';
 
 // --- Helper Components ---
 
