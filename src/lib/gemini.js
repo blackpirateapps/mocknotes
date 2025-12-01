@@ -41,7 +41,7 @@ export async function analyzeImage(base64Images) {
     Analyze the provided image(s) of a mock exam question. Treat them as a single context.
 
     TASKS:
-    1. Extract the Question text, Options, and Explanation from the images.
+    1. Extract the Question text, Options, and Explanation from the images. In case of math extract the exactly accurate math question. 
     2. Identify the Correct Answer.
     3. Classify the question into one of these 4 Subjects: "English", "Maths", "Reasoning", "GS".
     4. Identify the specific Topic (e.g., Algebra, Puzzles, Grammar, Polity).
