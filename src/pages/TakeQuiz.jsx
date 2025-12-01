@@ -303,14 +303,7 @@ export default function TakeQuiz() {
                           <MathText content={currentQ.question} />
                        </div>
                     </div>
-                    
-                    {currentQ.images && currentQ.images.length > 0 && (
-                        <div className="mt-6 flex gap-4 overflow-x-auto pb-2">
-                            {currentQ.images.map((img, i) => (
-                                <img key={i} src={img} alt="" className="h-48 rounded-lg border object-contain" />
-                            ))}
-                        </div>
-                    )}
+                    {/* Images removed here as requested */}
                  </div>
 
                  <div className="space-y-3">
