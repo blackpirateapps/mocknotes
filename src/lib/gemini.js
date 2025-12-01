@@ -38,20 +38,27 @@ export async function analyzeImage(base64Images) {
   const model = genAI.getGenerativeModel({ model: modelName });
 
   const prompt = `
-    Analyze the provided image(s) of a mock exam question. These images might contain the question, options, or the answer explanation. Treat them as a single context.
+    Analyze the provided image(s) of a mock exam question. Treat them as a single context.
 
     TASKS:
-    1. Extract the Question text, Options, and Explanation EXACTLY as they appear in the images. Do not paraphrase or summarize.
+    1. Extract the Question text, Options, and Explanation from the images.
     2. Identify the Correct Answer.
     3. Classify the question into one of these 4 Subjects: "English", "Maths", "Reasoning", "GS".
     4. Identify the specific Topic (e.g., Algebra, Puzzles, Grammar, Polity).
 
+    CRITICAL MATH FORMATTING RULES:
+    - You MUST use LaTeX for all mathematical expressions, equations, and symbols.
+    - Enclose INLINE math in single dollar signs (e.g., $x^2 + y^2 = z^2$).
+    - Enclose BLOCK math (standalone equations) in double dollar signs (e.g., $$ \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$).
+    - Do not use plain text for math (e.g., do NOT write "x squared").
+    - IMPORTANT: Since you are outputting JSON, you must double-escape all backslashes in LaTeX commands (e.g., use "\\\\frac" instead of "\\frac").
+
     Return ONLY raw JSON with this structure:
     {
-      "question": "Exact text from image",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "Question text with LaTeX math...",
+      "options": ["Option A with LaTeX...", "Option B..."],
       "correctIndex": 0,
-      "explanation": "Exact text from image",
+      "explanation": "Explanation with LaTeX math...",
       "subject": "Maths", 
       "topic": "Algebra"
     }
@@ -61,7 +68,7 @@ export async function analyzeImage(base64Images) {
   const imageParts = base64Images.map(img => ({
     inlineData: {
       data: img.split(',')[1],
-      mimeType: "image/jpeg", // Assuming standardized to jpeg/png
+      mimeType: "image/jpeg", 
     },
   }));
 
@@ -69,10 +76,15 @@ export async function analyzeImage(base64Images) {
     const result = await model.generateContent([prompt, ...imageParts]);
     const response = await result.response;
     const text = response.text();
+    // Clean code fences if Gemini adds them
     const cleanJson = text.replace(/```json|```/g, '').trim();
     return JSON.parse(cleanJson);
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
+    // Helpful error logging for JSON parsing issues
+    if (error instanceof SyntaxError) {
+        console.error("Failed to parse JSON. Raw text received:", await (await model.generateContent([prompt, ...imageParts])).response.text());
+    }
     throw error;
   }
 }
@@ -83,7 +95,12 @@ export async function askGeminiFollowUp(history, newQuestion) {
 
     const genAI = new GoogleGenerativeAI(API_KEY);
     const modelName = getModelId();
-    const model = genAI.getGenerativeModel({ model: modelName });
+    
+    // Add system instruction to maintain Math formatting in chat
+    const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: "You are a helpful tutor. Always use LaTeX formatting for math equations, enclosed in single $ for inline and double $$ for block equations." 
+    });
     
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(newQuestion);
