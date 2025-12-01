@@ -24,12 +24,12 @@ export default function Dashboard() {
 
   const getBadgeColor = (subj) => {
     switch(subj) {
-      case 'English': return 'bg-orange-100 text-orange-700';
-      case 'Maths': return 'bg-blue-100 text-blue-700';
-      case 'Reasoning': return 'bg-purple-100 text-purple-700';
-      case 'GS': return 'bg-green-100 text-green-700';
-      case 'Processing': return 'bg-gray-100 text-gray-500 animate-pulse';
-      default: return 'bg-gray-100 text-gray-600';
+      case 'English': return 'bg-orange-50 text-orange-700 border-orange-100';
+      case 'Maths': return 'bg-blue-50 text-blue-700 border-blue-100';
+      case 'Reasoning': return 'bg-purple-50 text-purple-700 border-purple-100';
+      case 'GS': return 'bg-green-50 text-green-700 border-green-100';
+      case 'Processing': return 'bg-gray-50 text-gray-500 animate-pulse';
+      default: return 'bg-gray-50 text-gray-600';
     }
   };
 
@@ -42,7 +42,7 @@ export default function Dashboard() {
         {topicFilter && (
             <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                 <span>Topic:</span>
-                <span className="font-medium text-gray-700">{topicFilter}</span>
+                <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">{topicFilter}</span>
             </div>
         )}
       </header>
@@ -52,7 +52,7 @@ export default function Dashboard() {
           <p>No questions found{subjectFilter ? ` for ${subjectFilter}` : ''}.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-things border border-things-border overflow-hidden w-full">
+        <div className="bg-white rounded-xl shadow-sm md:shadow-things border border-gray-200 md:border-things-border overflow-hidden w-full">
           {mocks.map((mock, i) => {
              const displayImage = Array.isArray(mock.images) ? mock.images[0] : mock.image;
              const dateStr = new Date(mock.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -64,13 +64,13 @@ export default function Dashboard() {
                 key={mock.id} 
                 to={isProcessing ? '#' : `/mock/${mock.id}`}
                 className={clsx(
-                  "flex items-center w-full gap-3 p-4 transition group relative overflow-hidden",
+                  "flex items-start md:items-center w-full gap-3 p-3 md:p-4 transition group relative overflow-hidden active:bg-gray-50",
                   i !== mocks.length - 1 && "border-b border-gray-100",
                   isProcessing ? "cursor-wait bg-gray-50/50" : "hover:bg-gray-50 cursor-pointer"
                 )}
               >
                 {/* Thumbnail */}
-                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200 relative">
+                <div className="w-16 h-16 md:w-12 md:h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200 relative mt-0.5 md:mt-0">
                   <img src={displayImage} alt="" className="w-full h-full object-cover" loading="lazy" />
                   {isProcessing && (
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -85,21 +85,29 @@ export default function Dashboard() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0 pr-1">
-                  <h3 className={clsx(
-                      "font-medium truncate text-[15px] leading-snug w-full",
-                      isProcessing ? "text-gray-500 italic" : "text-gray-900",
-                      isError ? "text-red-500" : ""
-                  )}>
-                    {mock.question}
-                  </h3>
+                <div className="flex-1 min-w-0 pr-0.5">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className={clsx(
+                        "font-medium text-[15px] leading-snug w-full",
+                        // Mobile: Allow 2 lines. Desktop: Truncate 1 line
+                        "line-clamp-2 md:truncate",
+                        isProcessing ? "text-gray-500 italic" : "text-gray-900",
+                        isError ? "text-red-500" : ""
+                    )}>
+                      {mock.question}
+                    </h3>
+                    {/* Date visible on mobile too now, just small */}
+                    <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap pt-0.5">
+                        {dateStr}
+                    </span>
+                  </div>
                   
                   <div className="flex items-center flex-wrap gap-2 mt-1.5 text-xs max-w-full">
-                    <span className={clsx("px-2 py-0.5 rounded-full font-medium shrink-0", getBadgeColor(mock.subject))}>
+                    <span className={clsx("px-2 py-0.5 rounded border font-medium shrink-0 text-[11px]", getBadgeColor(mock.subject))}>
                       {mock.subject}
                     </span>
                     {!isProcessing && !isError && (
-                        <span className="text-gray-400 flex items-center gap-1 truncate max-w-[120px]">
+                        <span className="text-gray-400 flex items-center gap-1 truncate max-w-[120px] md:max-w-none">
                             <span className="w-1 h-1 bg-gray-300 rounded-full shrink-0"></span>
                             <span className="truncate">{mock.topic}</span>
                         </span>
@@ -107,9 +115,8 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Right Meta */}
-                <div className="shrink-0 flex items-center">
-                  <span className="text-xs text-gray-400 font-medium hidden sm:block mr-3">{dateStr}</span>
+                {/* Right Arrow (Desktop only to save space on mobile) */}
+                <div className="shrink-0 hidden md:flex items-center">
                   {!isProcessing && (
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
                   )}
