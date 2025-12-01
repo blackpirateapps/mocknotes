@@ -1,6 +1,6 @@
 import React from 'react';
 import Sidebar from './Sidebar';
-import { Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Layout({ children }) {
@@ -24,21 +24,35 @@ export default function Layout({ children }) {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-64 min-h-screen">
+      <main className="flex-1 md:ml-64 min-h-screen flex flex-col">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b bg-white sticky top-0 z-20">
-          <div className="flex items-center">
-            <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-gray-600">
+        <div className="md:hidden flex items-center justify-between p-4 border-b bg-white sticky top-0 z-20 shadow-sm shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileMenuOpen(true)} className="p-1 -ml-1 text-gray-600 active:bg-gray-100 rounded">
               <Menu className="w-6 h-6" />
             </button>
-            <span className="font-bold ml-2 text-gray-800">MockMaster</span>
+            <span className="font-bold text-gray-800 text-lg">MockMaster</span>
           </div>
-          <Link to="/add" className="text-things-blue p-2 hover:bg-blue-50 rounded-full transition">
-            <Plus className="w-6 h-6" />
-          </Link>
+          
+          <div className="flex items-center gap-1">
+             <Link 
+              to="/settings" 
+              className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition"
+              title="Settings"
+             >
+                <Settings className="w-5 h-5" />
+             </Link>
+             <Link 
+              to="/add" 
+              className="p-2 text-things-blue hover:bg-blue-50 rounded-full transition"
+              title="Add New"
+             >
+                <Plus className="w-6 h-6" />
+             </Link>
+          </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 py-8 md:px-12 md:py-12">
+        <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:px-12 md:py-12 overflow-x-hidden">
           {children}
         </div>
       </main>
