@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams, Link } from 'react-router-dom';
 import { db } from '../lib/db';
@@ -13,7 +13,6 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 // Lightweight component for rendering math in previews
-// We map paragraphs to spans to ensure they fit inside the h3/line-clamp structure
 const MathPreview = ({ content }) => {
   return (
     <ReactMarkdown
@@ -21,7 +20,6 @@ const MathPreview = ({ content }) => {
       rehypePlugins={[rehypeKatex]}
       components={{
         p: ({ children }) => <span className="inline">{children}</span>,
-        // Block equations ($$) usually render as div/p, we force them to flow inline-ish for preview
         div: ({ children }) => <span className="inline">{children}</span>,
         span: ({ children }) => <span className="inline">{children}</span>
       }}
@@ -36,16 +34,63 @@ export default function Dashboard() {
   const subjectFilter = searchParams.get('subject');
   const topicFilter = searchParams.get('topic');
 
+  // --- Infinite Scroll State ---
+  const [displayLimit, setDisplayLimit] = useState(20);
+  const observerTarget = useRef(null);
+
+  // Reset limit when filters change so we don't start deep in a list
+  useEffect(() => {
+    setDisplayLimit(20);
+  }, [subjectFilter, topicFilter]);
+
+  // Query with limit
   const mocks = useLiveQuery(async () => {
     let collection = db.mocks.orderBy('createdAt').reverse();
-    let items = await collection.toArray();
+    
+    // Apply filters before limit if possible, or filter in memory if complex
+    // Dexie collections are lazy, so we build the chain
+    let items = await collection.toArray(); 
     
     if (subjectFilter) items = items.filter(i => i.subject === subjectFilter);
     if (topicFilter) items = items.filter(i => i.topic === topicFilter);
-    return items;
+    
+    // Slice the array based on current limit
+    // (Note: For massive DBs, we'd use .limit() on the collection directly, 
+    // but filtering in memory is safer for complex multi-filtering in Dexie)
+    return items.slice(0, displayLimit);
+  }, [subjectFilter, topicFilter, displayLimit]);
+
+  // Calculate if there are likely more items (to show/hide loading spinner at bottom)
+  // We do a quick count query to know the total available for this filter
+  const totalCount = useLiveQuery(async () => {
+    let collection = db.mocks.orderBy('createdAt');
+    let items = await collection.toArray();
+    if (subjectFilter) items = items.filter(i => i.subject === subjectFilter);
+    if (topicFilter) items = items.filter(i => i.topic === topicFilter);
+    return items.length;
   }, [subjectFilter, topicFilter]);
 
-  if (!mocks) return <Layout>Loading...</Layout>;
+  // Intersection Observer to load more
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+            setDisplayLimit((prev) => prev + 20);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [observerTarget]);
 
   const getBadgeColor = (subj) => {
     switch(subj) {
@@ -57,6 +102,10 @@ export default function Dashboard() {
       default: return 'bg-gray-50 text-gray-600';
     }
   };
+
+  const hasMore = mocks && totalCount && mocks.length < totalCount;
+
+  if (!mocks) return <Layout>Loading...</Layout>;
 
   return (
     <Layout>
@@ -115,7 +164,6 @@ export default function Dashboard() {
                     {/* Render Math Preview instead of raw text */}
                     <h3 className={clsx(
                         "font-medium text-[15px] leading-snug w-full",
-                        // Mobile: Allow 2 lines. Desktop: Truncate 1 line
                         "line-clamp-2 md:truncate",
                         isProcessing ? "text-gray-500 italic" : "text-gray-900",
                         isError ? "text-red-500" : ""
@@ -151,6 +199,13 @@ export default function Dashboard() {
               </Link>
              );
           })}
+          
+          {/* Infinite Scroll Trigger */}
+          {hasMore && (
+            <div ref={observerTarget} className="p-4 flex justify-center items-center">
+               <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+            </div>
+          )}
         </div>
       )}
     </Layout>
