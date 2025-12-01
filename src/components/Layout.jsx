@@ -1,35 +1,40 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, PlusCircle, Settings as SettingsIcon } from 'lucide-react';
+import Sidebar from './Sidebar';
+import { Menu } from 'lucide-react';
 
 export default function Layout({ children }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
   return (
-    <div className="min-h-screen max-w-4xl mx-auto px-4 py-8 pb-20">
-      <header className="flex justify-between items-center mb-8 sticky top-0 bg-things-bg/90 backdrop-blur-sm z-10 py-4">
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:opacity-80 transition">
-          <BookOpen className="w-6 h-6 text-things-blue" />
-          <span>Mock<span className="text-gray-400">Master</span></span>
-        </Link>
-        
-        <div className="flex items-center gap-3">
-            <Link 
-              to="/settings"
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-200/50 p-2 rounded-full transition"
-              title="Settings"
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </Link>
-            <Link 
-              to="/add" 
-              className="bg-white text-things-blue px-4 py-2 rounded-full font-medium shadow-things hover:shadow-things-hover transition flex items-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">New Mock</span>
-            </Link>
+    <div className="min-h-screen bg-white md:bg-things-bg flex">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div className="w-64 h-full bg-white shadow-xl">
+             <Sidebar />
+          </div>
+          <div className="flex-1 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
         </div>
-      </header>
-      <main className="animate-fade-in">
-        {children}
+      )}
+
+      {/* Main Content Area */}
+      <main className="flex-1 md:ml-64 min-h-screen">
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center p-4 border-b bg-white sticky top-0 z-20">
+          <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-gray-600">
+            <Menu className="w-6 h-6" />
+          </button>
+          <span className="font-bold ml-2">MockMaster</span>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 py-8 md:px-12 md:py-12">
+          {children}
+        </div>
       </main>
     </div>
   );
