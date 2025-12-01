@@ -1,21 +1,20 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-
-// Pages
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Importer from './pages/Importer';
 import MockDetail from './pages/MockDetail';
 import Settings from './pages/Settings';
-import TakeQuiz from './pages/TakeQuiz'; // <--- Import the new page
-
+import TakeQuiz from './pages/TakeQuiz';
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/add" element={<Importer />} />
-      <Route path="/mock/:id" element={<MockDetail />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/take-quiz" element={<TakeQuiz />} /> {/* <--- Add this line */}
-    </Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/add" element={<Importer />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/mock/:id" element={<MockDetail />} />
+        <Route path="/take-quiz" element={<TakeQuiz />}
+      </Routes>
+    </BrowserRouter>
   );
 }
