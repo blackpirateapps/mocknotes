@@ -5,9 +5,10 @@ import { askGeminiFollowUp } from '../lib/gemini';
 import Layout from '../components/Layout';
 import { 
   CheckCircle2, XCircle, HelpCircle, Send, 
-  ChevronLeft, ChevronRight, Trash2 
+  ChevronLeft, ChevronRight, Trash2, Edit2
 } from 'lucide-react';
 import clsx from 'clsx';
+import remarkBreaks from 'remark-breaks';
 
 // Math & Markdown Imports
 import ReactMarkdown from 'react-markdown';
@@ -19,12 +20,16 @@ import 'katex/dist/katex.min.css';
 const MathText = ({ content, className, isInline = false }) => {
   return (
     <ReactMarkdown
-      className={clsx("markdown-content", className)}
-      remarkPlugins={[remarkMath]}
+      className={clsx("markdown-content text-gray-800 leading-relaxed", className)}
+      remarkPlugins={[remarkMath, remarkBreaks]}
       rehypePlugins={[rehypeKatex]}
       components={{
-        p: ({ children }) => isInline ? <span className="inline">{children}</span> : <p className="mb-2 last:mb-0">{children}</p>,
-        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" />
+        p: ({ children }) => isInline ? <span className="inline">{children}</span> : <div className="mb-3 last:mb-0">{children}</div>,
+        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" />,
+        ul: ({ children }) => <ul className="list-disc pl-5 mb-2">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-5 mb-2">{children}</ol>,
+        li: ({ children }) => <li className="mb-1">{children}</li>,
+        strong: ({children}) => <span className="font-bold text-gray-900">{children}</span>
       }}
     >
       {content || ""}
@@ -39,6 +44,10 @@ export default function MockDetail() {
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
   
+  // Topic Editing State
+  const [isEditingTopic, setIsEditingTopic] = useState(false);
+  const [editedTopic, setEditedTopic] = useState("");
+
   // Image Carousel State
   const [currentImgIdx, setCurrentImgIdx] = useState(0);
 
@@ -49,10 +58,13 @@ export default function MockDetail() {
 
   useEffect(() => {
     db.mocks.get(Number(id)).then(data => {
-        if (data && !data.images && data.image) {
-            data.images = [data.image];
+        if (data) {
+            if (!data.images && data.image) {
+                data.images = [data.image];
+            }
+            setMock(data);
+            setEditedTopic(data.topic || "");
         }
-        setMock(data);
     });
   }, [id]);
 
@@ -72,6 +84,23 @@ export default function MockDetail() {
         console.error("Failed to delete mock:", error);
         alert("Failed to delete. Please try again.");
       }
+    }
+  };
+
+  const handleTopicSave = async () => {
+    if (!editedTopic.trim()) {
+        setIsEditingTopic(false);
+        setEditedTopic(mock.topic); // Revert if empty
+        return;
+    }
+    
+    try {
+        await db.mocks.update(Number(id), { topic: editedTopic });
+        setMock(prev => ({ ...prev, topic: editedTopic }));
+        setIsEditingTopic(false);
+    } catch (err) {
+        console.error("Failed to update topic", err);
+        alert("Could not update topic");
     }
   };
 
@@ -151,13 +180,32 @@ export default function MockDetail() {
           <div className="bg-white rounded-xl shadow-things p-6 border border-things-border">
             {/* Header: Tags & Delete Button */}
             <div className="flex items-center justify-between mb-4">
-                 <div className="flex gap-2">
+                 <div className="flex gap-2 items-center">
                     <span className="px-2 py-1 rounded-md bg-things-blue/10 text-things-blue text-xs font-semibold uppercase tracking-wide">
                         {mock.subject}
                     </span>
-                    <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium">
-                        {mock.topic}
-                    </span>
+                    
+                    {/* Editable Topic Badge */}
+                    {isEditingTopic ? (
+                        <input 
+                            type="text"
+                            autoFocus
+                            value={editedTopic}
+                            onChange={(e) => setEditedTopic(e.target.value)}
+                            onBlur={handleTopicSave}
+                            onKeyDown={(e) => e.key === 'Enter' && handleTopicSave()}
+                            className="w-32 px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-things-blue rounded-md focus:outline-none focus:ring-1 focus:ring-things-blue"
+                        />
+                    ) : (
+                        <button 
+                            onClick={() => setIsEditingTopic(true)}
+                            className="group flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200 hover:text-gray-800 transition"
+                            title="Click to edit topic"
+                        >
+                            {mock.topic}
+                            <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-50" />
+                        </button>
+                    )}
                  </div>
 
                  <button 

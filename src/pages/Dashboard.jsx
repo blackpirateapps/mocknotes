@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams, Link } from 'react-router-dom';
 import { db } from '../lib/db';
 import Layout from '../components/Layout';
-import { ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import clsx from 'clsx';
 
 // Math & Markdown Imports
@@ -38,47 +38,39 @@ export default function Dashboard() {
   const [displayLimit, setDisplayLimit] = useState(20);
   const observerTarget = useRef(null);
 
-  // Reset limit when filters change so we don't start deep in a list
+  // Reset limit when filters change
   useEffect(() => {
     setDisplayLimit(20);
   }, [subjectFilter, topicFilter]);
 
-  // Query with limit
-  const mocks = useLiveQuery(async () => {
+  // Unified Query: Gets both the slice and the total count to ensure sync
+  const data = useLiveQuery(async () => {
     let collection = db.mocks.orderBy('createdAt').reverse();
+    let allItems = await collection.toArray();
     
-    // Apply filters before limit if possible, or filter in memory if complex
-    // Dexie collections are lazy, so we build the chain
-    let items = await collection.toArray(); 
+    // Filter
+    if (subjectFilter) allItems = allItems.filter(i => i.subject === subjectFilter);
+    if (topicFilter) allItems = allItems.filter(i => i.topic === topicFilter);
     
-    if (subjectFilter) items = items.filter(i => i.subject === subjectFilter);
-    if (topicFilter) items = items.filter(i => i.topic === topicFilter);
-    
-    // Slice the array based on current limit
-    // (Note: For massive DBs, we'd use .limit() on the collection directly, 
-    // but filtering in memory is safer for complex multi-filtering in Dexie)
-    return items.slice(0, displayLimit);
+    return {
+        items: allItems.slice(0, displayLimit),
+        total: allItems.length
+    };
   }, [subjectFilter, topicFilter, displayLimit]);
 
-  // Calculate if there are likely more items (to show/hide loading spinner at bottom)
-  // We do a quick count query to know the total available for this filter
-  const totalCount = useLiveQuery(async () => {
-    let collection = db.mocks.orderBy('createdAt');
-    let items = await collection.toArray();
-    if (subjectFilter) items = items.filter(i => i.subject === subjectFilter);
-    if (topicFilter) items = items.filter(i => i.topic === topicFilter);
-    return items.length;
-  }, [subjectFilter, topicFilter]);
+  const mocks = data?.items || [];
+  const totalCount = data?.total || 0;
+  const hasMore = mocks.length < totalCount;
 
-  // Intersection Observer to load more
+  // Intersection Observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (entries[0].isIntersecting && hasMore) {
             setDisplayLimit((prev) => prev + 20);
         }
       },
-      { threshold: 1.0 }
+      { threshold: 0.5 } // Trigger when 50% of the loader is visible
     );
 
     if (observerTarget.current) {
@@ -90,7 +82,7 @@ export default function Dashboard() {
         observer.unobserve(observerTarget.current);
       }
     };
-  }, [observerTarget]);
+  }, [observerTarget, hasMore]); // Re-run if hasMore changes
 
   const getBadgeColor = (subj) => {
     switch(subj) {
@@ -103,9 +95,7 @@ export default function Dashboard() {
     }
   };
 
-  const hasMore = mocks && totalCount && mocks.length < totalCount;
-
-  if (!mocks) return <Layout>Loading...</Layout>;
+  if (!data) return <Layout>Loading...</Layout>;
 
   return (
     <Layout>
@@ -139,6 +129,7 @@ export default function Dashboard() {
                 to={isProcessing ? '#' : `/mock/${mock.id}`}
                 className={clsx(
                   "flex items-start md:items-center w-full gap-3 p-3 md:p-4 transition group relative overflow-hidden active:bg-gray-50",
+                  // Only add border if it's NOT the last item in the CURRENT view
                   i !== mocks.length - 1 && "border-b border-gray-100",
                   isProcessing ? "cursor-wait bg-gray-50/50" : "hover:bg-gray-50 cursor-pointer"
                 )}
@@ -161,7 +152,6 @@ export default function Dashboard() {
                 {/* Content */}
                 <div className="flex-1 min-w-0 pr-0.5">
                   <div className="flex justify-between items-start gap-2">
-                    {/* Render Math Preview instead of raw text */}
                     <h3 className={clsx(
                         "font-medium text-[15px] leading-snug w-full",
                         "line-clamp-2 md:truncate",
@@ -171,7 +161,6 @@ export default function Dashboard() {
                       {isProcessing ? mock.question : <MathPreview content={mock.question} />}
                     </h3>
                     
-                    {/* Date */}
                     <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap pt-0.5">
                         {dateStr}
                     </span>
@@ -190,7 +179,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Right Arrow (Desktop only) */}
+                {/* Right Arrow */}
                 <div className="shrink-0 hidden md:flex items-center">
                   {!isProcessing && (
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition" />
@@ -200,12 +189,19 @@ export default function Dashboard() {
              );
           })}
           
-          {/* Infinite Scroll Trigger */}
-          {hasMore && (
-            <div ref={observerTarget} className="p-4 flex justify-center items-center">
-               <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-            </div>
-          )}
+          {/* Footer Area: Loader or "No more posts" */}
+          <div className="p-4 border-t border-gray-50 bg-gray-50/50 flex justify-center items-center text-xs text-gray-400 font-medium uppercase tracking-wide">
+             {hasMore ? (
+                <div ref={observerTarget} className="flex items-center gap-2">
+                   <Loader2 className="w-4 h-4 animate-spin text-things-blue" />
+                   <span>Loading more...</span>
+                </div>
+             ) : (
+                <div className="flex items-center gap-2 opacity-60">
+                   <span>No more posts</span>
+                </div>
+             )}
+          </div>
         </div>
       )}
     </Layout>
