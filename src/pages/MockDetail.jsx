@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Trash2,
   Edit2,
+  Loader2,
 } from 'lucide-react';
 
 import clsx from 'clsx';
@@ -25,7 +26,9 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 // Helper Component for rendering Math/Markdown
-const MathText = ({ content, className, isInline = false }) => {
+const MathText = ({ content, className = '', isInline = false }) => {
+  if (!content) return null;
+  
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
@@ -47,7 +50,7 @@ const MathText = ({ content, className, isInline = false }) => {
         strong: ({ children }) => <strong className="font-bold">{children}</strong>,
       }}
     >
-      {content || ''}
+      {content}
     </ReactMarkdown>
   );
 };
@@ -75,8 +78,13 @@ export default function MockDetail() {
   useEffect(() => {
     db.mocks.get(Number(id)).then((data) => {
       if (data) {
+        // Ensure images array exists
         if (!data.images && data.image) {
           data.images = [data.image];
+        }
+        // Ensure images array is not empty
+        if (!data.images || data.images.length === 0) {
+          data.images = [''];
         }
         setMock(data);
         setEditedTopic(data.topic || '');
@@ -136,8 +144,8 @@ export default function MockDetail() {
     const context = `
 Context: The user is asking about a mock question in Subject: ${mock.subject}, Topic: ${mock.topic}.
 Question: ${mock.question}
-Options: ${mock.options.join(', ')}
-Correct Answer: ${mock.options[mock.correctIndex]}
+Options: ${mock.options?.join(', ') || 'No options'}
+Correct Answer: ${mock.options?.[mock.correctIndex] || 'N/A'}
 Explanation: ${mock.explanation}
 `;
 
@@ -161,6 +169,13 @@ Explanation: ${mock.explanation}
       ]);
     } catch (err) {
       console.error(err);
+      setChatMessages([
+        ...newHistory,
+        { 
+          role: 'model', 
+          parts: [{ text: 'Sorry, I encountered an error. Please try again.' }] 
+        },
+      ]);
     } finally {
       setIsChatting(false);
     }
@@ -168,17 +183,20 @@ Explanation: ${mock.explanation}
 
   // Carousel Logic
   const nextImage = () => {
+    if (!mock?.images || mock.images.length === 0) return;
     setCurrentImgIdx((prev) => (prev + 1) % mock.images.length);
   };
 
   const prevImage = () => {
+    if (!mock?.images || mock.images.length === 0) return;
     setCurrentImgIdx((prev) => (prev - 1 + mock.images.length) % mock.images.length);
   };
 
   if (!mock) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-10 text-gray-400">
+        <div className="flex items-center justify-center py-20 text-gray-400">
+          <Loader2 className="w-6 h-6 mr-2 animate-spin" />
           Loading...
         </div>
       </Layout>
@@ -191,15 +209,21 @@ Explanation: ${mock.explanation}
         {/* Left Column: Image Carousel */}
         <div className="relative">
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 aspect-[4/3]">
-            <img
-              src={mock.images[currentImgIdx]}
-              alt={`Question ${currentImgIdx + 1}`}
-              className="w-full h-full object-contain"
-            />
+            {mock.images && mock.images[currentImgIdx] ? (
+              <img
+                src={mock.images[currentImgIdx]}
+                alt={`Question ${currentImgIdx + 1}`}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                No image available
+              </div>
+            )}
           </div>
 
           {/* Carousel Controls */}
-          {mock.images.length > 1 && (
+          {mock.images && mock.images.length > 1 && (
             <>
               <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
                 {currentImgIdx + 1} / {mock.images.length}
@@ -228,7 +252,7 @@ Explanation: ${mock.explanation}
         <div className="space-y-5">
           {/* Header: Tags & Delete Button */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-md border border-blue-100">
                 {mock.subject}
               </span>
@@ -270,44 +294,46 @@ Explanation: ${mock.explanation}
           </div>
 
           {/* Options */}
-          <div className="space-y-2">
-            {mock.options.map((opt, idx) => {
-              let statusClass =
-                'bg-gray-50 border-transparent hover:bg-gray-100 text-gray-700';
+          {mock.options && mock.options.length > 0 && (
+            <div className="space-y-2">
+              {mock.options.map((opt, idx) => {
+                let statusClass =
+                  'bg-gray-50 border-transparent hover:bg-gray-100 text-gray-700 cursor-pointer';
 
-              if (showAnswer || selectedIdx !== null) {
-                if (idx === mock.correctIndex) {
-                  statusClass = 'bg-green-50 border-green-500 text-green-900 shadow-sm';
-                } else if (idx === selectedIdx && idx !== mock.correctIndex) {
-                  statusClass = 'bg-red-50 border-red-500 text-red-900 opacity-60';
-                } else {
-                  statusClass = 'opacity-40 grayscale';
+                if (showAnswer || selectedIdx !== null) {
+                  if (idx === mock.correctIndex) {
+                    statusClass = 'bg-green-50 border-green-500 text-green-900 shadow-sm';
+                  } else if (idx === selectedIdx && idx !== mock.correctIndex) {
+                    statusClass = 'bg-red-50 border-red-500 text-red-900 opacity-60';
+                  } else {
+                    statusClass = 'opacity-40 grayscale cursor-default';
+                  }
                 }
-              }
 
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleOptionClick(idx)}
-                  className={clsx(
-                    'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 flex justify-between items-center group',
-                    statusClass
-                  )}
-                >
-                  <MathText content={opt} isInline />
-
-                  {idx === mock.correctIndex &&
-                    (showAnswer || selectedIdx !== null) && (
-                      <CheckCircle2 className="w-5 h-5 shrink-0" />
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleOptionClick(idx)}
+                    className={clsx(
+                      'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 flex justify-between items-center group',
+                      statusClass
                     )}
+                  >
+                    <MathText content={opt} isInline />
 
-                  {idx === selectedIdx && idx !== mock.correctIndex && (
-                    <XCircle className="w-5 h-5 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    {idx === mock.correctIndex &&
+                      (showAnswer || selectedIdx !== null) && (
+                        <CheckCircle2 className="w-5 h-5 shrink-0 ml-2" />
+                      )}
+
+                    {idx === selectedIdx && idx !== mock.correctIndex && (
+                      <XCircle className="w-5 h-5 shrink-0 ml-2" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Actions */}
           <button
@@ -319,7 +345,7 @@ Explanation: ${mock.explanation}
           </button>
 
           {/* Explanation */}
-          {(showAnswer || selectedIdx !== null) && (
+          {(showAnswer || selectedIdx !== null) && mock.explanation && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-semibold text-blue-900 mb-2 text-sm">
                 Explanation
@@ -333,6 +359,8 @@ Explanation: ${mock.explanation}
 
           {/* Chat Interface */}
           <div className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
+            <h4 className="font-medium text-gray-700 text-sm">Ask Gemini</h4>
+            
             {chatMessages.length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">
                 Ask Gemini for clarification...
@@ -350,13 +378,14 @@ Explanation: ${mock.explanation}
                       : 'bg-gray-100 text-gray-800 mr-4'
                   )}
                 >
-                  <MathText content={msg.parts[0].text} isInline />
+                  <MathText content={msg.parts[0].text} />
                 </div>
               ))}
             </div>
 
             {isChatting && (
-              <div className="text-gray-400 text-sm italic">
+              <div className="text-gray-400 text-sm italic flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
                 Gemini is thinking...
               </div>
             )}
@@ -367,7 +396,8 @@ Explanation: ${mock.explanation}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="E.g., Why is option A incorrect?"
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-things-blue focus:ring-1 focus:ring-things-blue transition"
+                disabled={isChatting}
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-things-blue focus:ring-1 focus:ring-things-blue transition disabled:opacity-50"
               />
               <button
                 type="submit"
