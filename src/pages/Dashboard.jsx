@@ -235,7 +235,7 @@ export default function Dashboard() {
               <Link
                 key={mock.id}
                 // Adjust this route if your app uses a different path
-                to={`/mocks/${mock.id}`}
+                to={`/mock/${mock.id}`}
                 className={clsx(
                   'flex items-start md:items-center w-full gap-3 p-3 md:p-4 transition group relative overflow-hidden active:bg-gray-50',
                   i !== mocks.length - 1 && 'border-b border-gray-100',
