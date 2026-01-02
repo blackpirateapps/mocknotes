@@ -24,7 +24,8 @@
     "remark-math": "latest",
     "rehype-katex": "latest",
     "react-markdown": "latest", 
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "react-virtuoso": "latest"
 
   },
   "devDependencies": {

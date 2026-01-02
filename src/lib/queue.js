@@ -2,20 +2,14 @@ import { analyzeImage } from './gemini';
 import { addPlaceholderMock, updateMockWithAI, failMock } from './db';
 
 /**
- * Starts the analysis process in the "background".
- * It creates a DB entry immediately, then runs the heavy async task.
- * Since this is client-side JS, "background" means it runs as long as the tab is open.
+ * Starts the analysis process in the background with retry logic.
  */
 export async function processImagesInBackground(images) {
   let mockId;
-  
   try {
-    // 1. Create a placeholder immediately so user sees it in Dashboard
     mockId = await addPlaceholderMock(images);
-
-    // 2. Start the heavy lifting (Fire and forget from UI perspective)
-    analyzeMock(mockId, images);
-    
+    // Start the analysis with retry parameters
+    analyzeMockWithRetry(mockId, images);
     return mockId;
   } catch (err) {
     console.error("Queue Start Error:", err);
@@ -23,15 +17,32 @@ export async function processImagesInBackground(images) {
   }
 }
 
-async function analyzeMock(id, images) {
+/**
+ * Performs the API call with Exponential Backoff for 429 errors.
+ */
+async function analyzeMockWithRetry(id, images, retries = 3, delay = 5000) {
   try {
-    // Perform the actual API call
     const aiData = await analyzeImage(images);
-    
-    // Update the DB entry
     await updateMockWithAI(id, aiData);
-    
   } catch (error) {
+    // Check if the error is a Rate Limit (429) error
+    const isRateLimit = error.message?.includes('429') || 
+                        error.status === 429 ||
+                        error.message?.toLowerCase().includes('too many requests');
+
+    if (isRateLimit && retries > 0) {
+      console.warn(`Rate limit hit for mock ${id}. Retrying in ${delay / 1000}s...`);
+      
+      // Update the UI text so the user knows it's waiting
+      import('./db').then(dbMod => {
+        dbMod.db.mocks.update(id, { question: `Rate limit hit. Retrying in ${delay/1000}s...` });
+      });
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      // Retry with fewer remaining attempts and double the delay
+      return analyzeMockWithRetry(id, images, retries - 1, delay * 2);
+    }
+    
     console.error(`Processing failed for mock ${id}:`, error);
     await failMock(id, error.message);
   }
